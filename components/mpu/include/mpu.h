@@ -4,6 +4,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-void calibrate_mpu();
-void mpu_init();
-void calc_mpu();
+void calibrate_mpu(mpu6050_handle_t *mpu);
+void mpu_init(mpu6050_handle_t *mpu);
+
