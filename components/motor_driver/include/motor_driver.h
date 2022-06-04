@@ -8,3 +8,5 @@
 #define MOTOR2 2
 #define MOTOR3 14
 #define MOTOR4 12
+
+void motor_init();

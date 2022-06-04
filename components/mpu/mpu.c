@@ -2,6 +2,7 @@
 #include "mpu.h"
 #include "config.h"
 
+esp_err_t error = ESP_OK;
 mpu6050_acce_value_t acce_local;
 mpu6050_gyro_value_t gyro_local;
 complimentary_angle_t complimentary_angle_local;
@@ -10,6 +11,10 @@ float pitch_error = 0.0 ;
 float roll_error = 0.0 ;
 
 void calibrate_mpu(mpu6050_handle_t *mpu){
+    if (*mpu == NULL) {
+        ESP_LOGE(TAG, "MPU6050 handle is NULL");
+        return;
+    }
     float pitch_sum = 0;
     float roll_sum = 0;
     for(int c=0;c<calibrate_count;c++){
@@ -41,11 +46,24 @@ void mpu_init(mpu6050_handle_t *mpu){
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000,  
     };
-    i2c_param_config(i2c_master_port, &conf);
-    i2c_driver_install(i2c_master_port, conf.mode,0,0,0);
+    error = i2c_param_config(i2c_master_port, &conf);
+    if(error != ESP_OK){
+        ESP_LOGE(TAG, "I2C Param Config failed");
+        return;
+    }
+    error = i2c_driver_install(i2c_master_port, conf.mode,0,0,0);
+    if(error != ESP_OK){
+        ESP_LOGE(TAG, "I2C Driver Install failed");
+        return;
+    }
     *mpu=mpu6050_create(i2c_master_port,0x68u);
     mpu6050_wake_up(*mpu);
-    mpu6050_config(*mpu, ACCE_FS_4G, GYRO_FS_500DPS);
+    error = mpu6050_config(*mpu, ACCE_FS_4G, GYRO_FS_500DPS);
+    if(error != ESP_OK){
+        ESP_LOGE(TAG, "MPU Config failed");
+        *mpu=NULL;
+        return;
+    }
     ESP_LOGI(TAG,"MPU6050 initiated successfully");
 }
 
