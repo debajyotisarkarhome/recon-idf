@@ -3,7 +3,7 @@
 #include "motor_driver.h"
 
 void motor_init(){
-    ret = mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, MOTOR1);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, MOTOR1);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM1A, MOTOR2);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM2A, MOTOR3);
     mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM0A, MOTOR4);
