@@ -8,6 +8,7 @@ mpu6050_handle_t mpu ;
 void app_main(void)
 {
     mpu_init(&mpu);
-    calibrate_mpu(&mpu);
-    motor_init();
+    calibrate_gyro(&mpu);
+    motor_init();  
+    stabilize(&mpu);
 }
