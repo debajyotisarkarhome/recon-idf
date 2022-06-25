@@ -6,27 +6,29 @@ mpu6050_acce_value_t acce_local;
 mpu6050_gyro_value_t gyro_local;
 
 
-float pitch_error = 0.0 ;
-float roll_error = 0.0 ;
+double pitch_error = 0.0 ;
+double roll_error = 0.0 ;
 
-float gyro_x_error = 0.0 ; 
-float gyro_y_error = 0.0 ;
-float gyro_z_error = 0.0 ;
+double gyro_x_error = 0.0 ; 
+double gyro_y_error = 0.0 ;
+double gyro_z_error = 0.0 ;
 
-float gyro_x;
-float gyro_y;
-float gyro_z;
+double gyro_x;
+double gyro_y;
+double gyro_z;
 
-float acc_x;
-float acc_y;
-float acc_z;
+double acc_x;
+double acc_y;
+double acc_z;
 
-float angle_pitch;
-float angle_roll;
+double angle_pitch;
+double angle_roll;
 
-float acc_total_vector;
-float angle_pitch_acc;
-float angle_roll_acc;
+double acc_total_vector;
+double angle_pitch_acc;
+double angle_roll_acc;
+
+// double yaw_test ; //test
 
 int set_gyro_angles = 0;
 
@@ -35,9 +37,9 @@ void calibrate_gyro(mpu6050_handle_t *mpu){
         ESP_LOGE(TAG, "MPU6050 handle is NULL");
         return;
     }
-    float gyro_x_sum = 0;
-    float gyro_y_sum = 0;
-    float gyro_z_sum = 0;
+    double gyro_x_sum = 0;
+    double gyro_y_sum = 0;
+    double gyro_z_sum = 0;
 
     for(int c=0;c<calibrate_count;c++){
         mpu6050_get_gyro(*mpu, &gyro_local);
@@ -96,21 +98,21 @@ void measure(mpu6050_handle_t *mpu){
 
     gyro_x = gyro_local.gyro_x - gyro_x_error;                                                //Subtract the offset calibration value from the raw gyro_x value
     gyro_y = gyro_local.gyro_y - gyro_y_error;                                                //Subtract the offset calibration value from the raw gyro_y value
-    gyro_z = gyro_local.gyro_z - gyro_z_error;
+    // gyro_z = gyro_local.gyro_z - gyro_z_error;
 
     acc_x = acce_local.acce_x;
     acc_y = acce_local.acce_y;
     acc_z = acce_local.acce_z;
 
     angle_pitch += gyro_x/100 ;                                   //Calculate the traveled pitch angle and add this to the angle_pitch variable
-    angle_roll += gyro_y/100 ; 
+    angle_roll += gyro_y/100 ;                                    //Calculate the traveled roll angle and add this to the angle_roll variable
 
-    angle_pitch += angle_roll * sin(gyro_z * 0.01745329 );
-    angle_roll -= angle_pitch * sin(gyro_z * 0.01745329 );
+    // angle_pitch += angle_roll * sin(gyro_z * 0.01745329 );
+    // angle_roll -= angle_pitch * sin(gyro_z * 0.01745329 );
 
     acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));
-    angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296; 
-    angle_roll_acc = asin((float)acc_x/acc_total_vector)* -57.296;
+    angle_pitch_acc = asin((double)acc_y/acc_total_vector)* 57.296; 
+    angle_roll_acc = asin((double)acc_x/acc_total_vector)* -57.296;
 
     if(set_gyro_angles){                                                 //If the IMU is already started
         angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;     //Correct the drift of the gyro pitch angle with the accelerometer pitch angle
@@ -126,12 +128,16 @@ void measure(mpu6050_handle_t *mpu){
 }
 
 void stabilize(mpu6050_handle_t *mpu){
-        const esp_timer_create_args_t periodic_timer_args = {
-            .callback = measure,
-            .name = "periodic",
-            .arg = mpu,
-    };
-    esp_timer_handle_t periodic_timer;
-    esp_timer_create(&periodic_timer_args, &periodic_timer);
-    esp_timer_start_periodic(periodic_timer, 10000);
+    // const esp_timer_create_args_t periodic_timer_args = {
+    //         .callback = measure,
+    //         .name = "periodic",
+    //         .arg = mpu,
+    // };
+    // esp_timer_handle_t periodic_timer;
+    // esp_timer_create(&periodic_timer_args, &periodic_timer);
+    // esp_timer_start_periodic(periodic_timer, 500);
+    while(1){
+        measure(mpu);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
 }
