@@ -5,6 +5,15 @@ esp_err_t error = ESP_OK;
 mpu6050_acce_value_t acce_local;
 mpu6050_gyro_value_t gyro_local;
 
+double pitch_p_output = 0;
+double pitch_i_output = 0;
+double pitch_d_output = 0;
+double last_pitch_error = 0;
+
+double roll_p_output = 0;
+double roll_i_output = 0;
+double roll_d_output = 0;
+double last_roll_error = 0;
 
 double pitch_error = 0.0 ;
 double roll_error = 0.0 ;
@@ -27,6 +36,12 @@ double angle_roll;
 double acc_total_vector;
 double angle_pitch_acc;
 double angle_roll_acc;
+
+double last_pitch = 0;
+double last_roll = 0;
+
+double pitch_correction;
+double roll_correction;
 
 // double yaw_test ; //test
 
@@ -92,40 +107,6 @@ void mpu_init(mpu6050_handle_t *mpu){
     ESP_LOGI(TAG,"MPU6050 initiated successfully");
 }
 
-void measure(mpu6050_handle_t *mpu){
-    mpu6050_get_gyro(*mpu, &gyro_local);
-    mpu6050_get_acce(*mpu, &acce_local);
-
-    gyro_x = gyro_local.gyro_x - gyro_x_error;                                                //Subtract the offset calibration value from the raw gyro_x value
-    gyro_y = gyro_local.gyro_y - gyro_y_error;                                                //Subtract the offset calibration value from the raw gyro_y value
-    // gyro_z = gyro_local.gyro_z - gyro_z_error;
-
-    acc_x = acce_local.acce_x;
-    acc_y = acce_local.acce_y;
-    acc_z = acce_local.acce_z;
-
-    angle_pitch += gyro_x/100 ;                                   //Calculate the traveled pitch angle and add this to the angle_pitch variable
-    angle_roll += gyro_y/100 ;                                    //Calculate the traveled roll angle and add this to the angle_roll variable
-
-    // angle_pitch += angle_roll * sin(gyro_z * 0.01745329 );
-    // angle_roll -= angle_pitch * sin(gyro_z * 0.01745329 );
-
-    acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));
-    angle_pitch_acc = asin((double)acc_y/acc_total_vector)* 57.296; 
-    angle_roll_acc = asin((double)acc_x/acc_total_vector)* -57.296;
-
-    if(set_gyro_angles){                                                 //If the IMU is already started
-        angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;     //Correct the drift of the gyro pitch angle with the accelerometer pitch angle
-        angle_roll = angle_roll * 0.9996 + angle_roll_acc * 0.0004;        //Correct the drift of the gyro roll angle with the accelerometer roll angle
-    }
-    else{                                                                //At first start
-        angle_pitch = angle_pitch_acc;                                     //Set the gyro pitch angle equal to the accelerometer pitch angle 
-        angle_roll = angle_roll_acc;                                       //Set the gyro roll angle equal to the accelerometer roll angle 
-        set_gyro_angles = 1;                                            //Set the IMU started flag
-    }
-
-    ESP_LOGI(TAG, "Pitch : %f | Roll : %f", angle_pitch, angle_roll);
-}
 
 void stabilize(mpu6050_handle_t *mpu){
     // const esp_timer_create_args_t periodic_timer_args = {
@@ -137,7 +118,60 @@ void stabilize(mpu6050_handle_t *mpu){
     // esp_timer_create(&periodic_timer_args, &periodic_timer);
     // esp_timer_start_periodic(periodic_timer, 500);
     while(1){
-        measure(mpu);
+        mpu6050_get_gyro(*mpu, &gyro_local);
+        mpu6050_get_acce(*mpu, &acce_local);
+
+        gyro_x = gyro_local.gyro_x - gyro_x_error;                                                //Subtract the offset calibration value from the raw gyro_x value
+        gyro_y = gyro_local.gyro_y - gyro_y_error;                                                //Subtract the offset calibration value from the raw gyro_y value
+
+        acc_x = acce_local.acce_x;
+        acc_y = acce_local.acce_y;
+        acc_z = acce_local.acce_z;
+
+        angle_pitch += gyro_x/100 ;                                   //Calculate the traveled pitch angle and add this to the angle_pitch variable
+        angle_roll += gyro_y/100 ;                                    //Calculate the traveled roll angle and add this to the angle_roll variable
+
+
+        acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));
+        angle_pitch_acc = asin((double)acc_y/acc_total_vector)* 57.296; 
+        angle_roll_acc = asin((double)acc_x/acc_total_vector)* -57.296;
+
+        if(set_gyro_angles){                                                 //If the IMU is already started
+            angle_pitch = angle_pitch * FILTER_BIAS + angle_pitch_acc * (1-FILTER_BIAS);     //Correct the drift of the gyro pitch angle with the accelerometer pitch angle
+            angle_roll = angle_roll * FILTER_BIAS + angle_roll_acc * (1-FILTER_BIAS);        //Correct the drift of the gyro roll angle with the accelerometer roll angle
+        }
+        else{                                                                //At first start
+            angle_pitch = angle_pitch_acc;                                     //Set the gyro pitch angle equal to the accelerometer pitch angle 
+            angle_roll = angle_roll_acc;                                       //Set the gyro roll angle equal to the accelerometer roll angle 
+            set_gyro_angles = 1;                                            //Set the IMU started flag
+        }
+
+        ///////////////////////////////PITCH CONTROL////////////////////////////////
+
+        pitch_error = 0-angle_pitch; 
+
+        pitch_p_output = (pitch_error * Kp);
+        pitch_i_output = pitch_i_output + (pitch_error * Ki);
+        pitch_d_output = (pitch_error - last_pitch_error) * Kd;
+        last_pitch_error = pitch_error;
+
+        pitch_correction = pitch_p_output + pitch_i_output + pitch_d_output;
+        
+        
+        ///////////////////////////////ROLL CONTROL////////////////////////////////
+
+        roll_error = 0-angle_roll;
+
+        roll_p_output = (roll_error * Kp);
+        roll_i_output = roll_i_output + (roll_error * Ki);
+        roll_d_output = (roll_error - last_roll_error) * Kd;
+        last_roll_error = roll_error;
+
+        roll_correction = roll_p_output + roll_i_output + roll_d_output;
+
+
+        ESP_LOGI(TAG, "Pitch : %f | Roll : %f", angle_pitch, angle_roll);
+        
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }

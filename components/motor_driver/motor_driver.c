@@ -18,3 +18,16 @@ void motor_init(){
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_2, &pwm_config);
     mcpwm_init(MCPWM_UNIT_1, MCPWM_TIMER_0, &pwm_config);
 }
+
+void set_motor_1(int duty_perc){
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, duty_perc);
+}
+void set_motor_2(int duty_perc){
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_OPR_A, duty_perc);
+}
+void set_motor_3(int duty_perc){
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_2, MCPWM_OPR_A, duty_perc);
+}
+void set_motor_4(int duty_perc){
+    mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_0, MCPWM_OPR_A, duty_perc);
+}

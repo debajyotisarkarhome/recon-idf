@@ -10,3 +10,7 @@
 #define MOTOR4 12
 
 void motor_init();
+void set_motor_1(int duty_perc);
+void set_motor_2(int duty_perc);
+void set_motor_3(int duty_perc);
+void set_motor_4(int duty_perc);
